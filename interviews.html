@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인터뷰 모아보기</title>
+    <link rel="stylesheet" href="sigape.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <script src="site-config.js"></script>
+    <script src="site-data.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav">
+        <div class="brand">
+          <a class="brand-logo-link" href="#" data-config-url="NOTION_URL" target="_blank" rel="noopener noreferrer" aria-label="자연대 학생회 노션">
+            <img class="brand-logo" src="logo.png" alt="파람 로고">
+          </a>
+          <span class="brand-text">
+            <a class="brand-main" href="index.html">랩인턴 백서</a>
+            <a class="brand-sub" href="#" data-config-url="NOTION_URL" target="_blank" rel="noopener noreferrer">제43대 자연대 학생회 [파람]</a>
+          </span>
+        </div>
+        <div class="menu">
+          <a href="index.html">홈</a>
+          <a href="labs.html">연구실 찾기</a>
+          <a href="interviews.html" aria-current="page">인터뷰</a>
+          <a href="contact-mail.html">컨택메일</a>
+          <a class="menu-report" href="#" data-config-url="ERROR_FORM_URL" target="_blank" rel="noopener noreferrer">오류 제보</a>
+        </div>
+      </nav>
+    </header>
+    <main class="page">
+      <p class="breadcrumb"><a href="index.html">홈</a> / 인터뷰 모아보기</p>
+      <section class="hero">
+        <p class="eyebrow">인터뷰 데이터베이스</p>
+        <h1>랩인턴을 먼저 경험한 사람들의 이야기를 모았습니다.</h1>
+        <p class="lead">학부생, 대학원생, 교수님 인터뷰를 구분과 학부별로 살펴볼 수 있습니다. </p>
+      </section>
+      <section class="section toolbar">
+        <div class="toolbar-grid">
+          <div class="field">
+            <label for="searchInput">검색</label>
+            <input id="searchInput" type="search" placeholder="이름, 학부, 키워드, 요약">
+          </div>
+          <div class="field">
+            <label for="roleFilter">구분</label>
+            <select id="roleFilter">
+              <option value="all">전체</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="deptFilter">학부</label>
+            <select id="deptFilter">
+              <option value="all">전체</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <section class="summary-row">
+        <div id="resultCount">인터뷰를 불러오는 중입니다.</div>
+        <button class="btn" type="button" id="resetButton">필터 초기화</button>
+      </section>
+      <section class="state" id="loadingState">인터뷰 정보를 불러오는 중입니다.</section>
+      <section class="state error hidden" id="errorState"></section>
+      <section class="cards" id="gallery"></section>
+      <section class="state hidden" id="emptyState">조건에 맞는 결과가 없습니다. 검색어를 줄이거나 다른 학부를 선택해 주세요.</section>
+      <footer class="footer compact-credit-footer">
+        <p><strong>만든 사람들</strong> | 제43대 자연과학대학 학생회 [파람] 교육진로국</p>
+        <p><strong>함께한 사람들</strong> | 제12대 통계학과 학생회 [노을], 제26대 지구환경과학부 학생회 [이륙], 제19대 화학부 학생회, 제12대 수리과학부 학생회 [스펙트럼], 제22대 생명과학부 학생회 [여울], 제18대 물리천문학부 학생회 [델]</p>
+      </footer>
+      <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <article class="modal">
+          <div class="modal-head">
+            <div>
+              <h2 id="modalName">인터뷰</h2>
+              <div class="small" id="modalMeta"></div>
+            </div>
+            <button class="close-btn" type="button" id="closeModal" aria-label="닫기">×</button>
+          </div>
+          <div class="modal-body" id="modalBody"></div>
+        </article>
+      </div>
+    </main>
+    <script>
+      const DATA_REQUIRED_MESSAGE = "관리자 페이지에서 파일을 업로드해주세요.";
+      let interviews = [],
+        currentRole = "all",
+        currentDept = "all";
+      const defaultQuestions = ["랩인턴을 하게 된 계기는 무엇인가요?", "컨택 또는 선발 과정에서 중요했던 점은 무엇인가요?", "실제로 어떤 일을 했나요?",
+        "미리 준비하면 좋은 것은 무엇인가요?", "랩인턴을 고민하는 학부생에게 해주고 싶은 조언은 무엇인가요?"
+      ];
+      const $ = id => document.getElementById(id);
+
+      function safe(v, f = "") {
+        const t = v == null ? "" : String(v).trim();
+        return t || f
+      }
+
+      function esc(v) {
+        return String(v).replace(/[&<>"']/g, c => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        } [c]))
+      }
+
+      function tags(v) {
+        return v ? String(v).split(/[,，#\/|]/).map(x => x.trim()).filter(Boolean) : []
+      }
+
+      function unique(items) {
+        return [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"))
+      }
+
+      function normalizeDept(value) {
+        const text = safe(value, "미분류");
+        const order = ["수리과학부", "통계학과", "물리천문학부", "화학부", "생명과학부", "지구환경과학부"];
+        return order.find(dept => text.includes(dept)) || text
+      }
+
+      function normalize(r) {
+        return {
+          name: safe(r.이름, "이름 미입력"),
+          role: safe(r.구분, "미분류"),
+          dept: normalizeDept(r.학부),
+          keywords: tags(r.키워드),
+          summary: safe(r.요약, "요약이 아직 입력되지 않았습니다."),
+          overview: safe(r.소개 || r.개요, "인터뷰 소개가 아직 입력되지 않았습니다."),
+          qa: Array.from({
+            length: 10
+          }, (_, i) => ({
+            q: safe(r["질문" + (i + 1)], ""),
+            a: safe(r["답변" + (i + 1)], "")
+          })).filter(x => x.q || x.a),
+          advice: safe(r.한마디 || r.한줄조언, "인터뷰 조언을 입력해주세요.")
+        }
+      }
+
+      function renderOptions() {
+        const roles = unique(interviews.map(i => i.role));
+        const depts = unique(interviews.map(i => i.dept));
+        $("roleFilter").innerHTML = '<option value="all">전체</option>' + roles.map(r => '<option value="' +
+          esc(r) + '">' + esc(r) + '</option>').join("");
+        $("deptFilter").innerHTML = '<option value="all">전체</option>' + depts.map(d => '<option value="' +
+          esc(d) + '">' + esc(d) + '</option>').join("")
+      }
+
+      function filteredInterviews() {
+        const q = $("searchInput").value.trim().toLowerCase();
+        return interviews.filter(i => {
+          const hay = [i.name, i.role, i.dept, i.summary, i.overview, i.advice, ...i.keywords, ...i.qa
+            .flatMap(x => [x.q, x.a])
+          ].join(" ").toLowerCase();
+          return (!q || hay.includes(q)) && (currentRole === "all" || i.role === currentRole) && (
+            currentDept === "all" || i.dept === currentDept)
+        })
+      }
+
+      function render() {
+        const list = filteredInterviews();
+        $("resultCount").textContent = "총 " + list.length + "개의 인터뷰";
+        $("emptyState").classList.toggle("hidden", list.length !== 0);
+        $("gallery").innerHTML = list.map((item, index) => {
+          const tagHtml = item.keywords.slice(0, 4).map(k => '<span class="tag">#' + esc(k) +
+            '</span>').join("");
+          return '<article class="card interview-card"><p class="eyebrow">' + esc(item.role) +
+            '</p><h2 class="card-title">' + esc(item.name) + '</h2><div class="meta">' + esc(item
+              .dept) + '</div><p>' + esc(item.summary) + '</p><div class="tags">' + tagHtml +
+            '</div><div class="card-actions"><button class="btn primary" type="button" data-interview-index="' +
+            index + '">자세히 보기</button></div></article>'
+        }).join("");
+        document.querySelectorAll("[data-interview-index]").forEach(btn => btn.addEventListener("click",
+        () => openModal(list[Number(btn.dataset.interviewIndex)])))
+      }
+
+      function openModal(item) {
+        if (!item) return;
+        $("modalName").textContent = item.name;
+        $("modalMeta").textContent = item.role + " · " + item.dept;
+        const qa = item.qa.length ? item.qa : [];
+        const tagHtml = item.keywords.length ? '<div class="tags">' + item.keywords.map(k =>
+          '<span class="tag">#' + esc(k) + '</span>').join("") + '</div>' : "";
+        const qaHtml = qa.map((x, i) => '<details ' + (i === 0 ? 'open' : '') + '><summary>Q. ' + esc(x
+            .q || defaultQuestions[i] || "질문") + '</summary><p>' + esc(x.a || "답변이 아직 입력되지 않았습니다.") +
+          '</p></details>').join("");
+        $("modalBody").innerHTML = '<section class="modal-summary"><p>' + esc(item.overview) + '</p>' +
+          tagHtml + '</section>' + qaHtml + '<section class="panel soft modal-advice"><h3>한줄 조언</h3><p>' +
+          esc(item.advice) + '</p></section>';
+        $("modalBackdrop").classList.add("active");
+        $("modalBackdrop").setAttribute("aria-hidden", "false")
+      }
+
+      function closeModal() {
+        $("modalBackdrop").classList.remove("active");
+        $("modalBackdrop").setAttribute("aria-hidden", "true")
+      }
+
+      function showDataRequired() {
+        interviews = [];
+        $("resultCount").textContent = "데이터가 아직 업로드되지 않았습니다.";
+        $("loadingState").classList.add("hidden");
+        $("errorState").textContent = DATA_REQUIRED_MESSAGE;
+        $("errorState").classList.remove("hidden");
+        renderOptions();
+        render();
+      }
+
+      function loadData() {
+        const rows = window.SITE_DATA && Array.isArray(window.SITE_DATA.interviews) ? window.SITE_DATA
+          .interviews : [];
+        if (!rows.length) {
+          showDataRequired();
+          return
+        }
+        interviews = rows.map(normalize).filter(i => i.name !== "이름 미입력");
+        $("loadingState").classList.add("hidden");
+        if (!interviews.length) {
+          showDataRequired();
+          return
+        }
+        $("errorState").classList.add("hidden");
+        renderOptions();
+        render()
+      }
+      $("searchInput").addEventListener("input", render);
+      $("roleFilter").addEventListener("change", e => {
+        currentRole = e.target.value;
+        render()
+      });
+      $("deptFilter").addEventListener("change", e => {
+        currentDept = e.target.value;
+        render()
+      });
+      $("resetButton").addEventListener("click", () => {
+        $("searchInput").value = "";
+        currentRole = "all";
+        currentDept = "all";
+        $("roleFilter").value = "all";
+        $("deptFilter").value = "all";
+        render()
+      });
+      $("closeModal").addEventListener("click", closeModal);
+      $("modalBackdrop").addEventListener("click", e => {
+        if (e.target.id === "modalBackdrop") closeModal()
+      });
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape") closeModal()
+      });
+      loadData();
+    </script>
+    <script>
+      document.querySelectorAll("[data-config-url]").forEach(function(link) {
+        var key = link.getAttribute("data-config-url");
+        var url = window.SITE_CONFIG && window.SITE_CONFIG[key];
+        if (url) {
+          link.href = url
+        } else {
+          link.hidden = true
+        }
+      });
+    </script>
+    <a class="admin-float" href="admin.html" aria-label="관리자 페이지">관리자</a>
+  </body>
+
+</html>

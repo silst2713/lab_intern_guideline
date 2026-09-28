@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자연대 연구실 찾기</title>
+    <link rel="stylesheet" href="sigape.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <script src="site-config.js"></script>
+    <script src="site-data.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav">
+        <div class="brand">
+          <a class="brand-logo-link" href="#" data-config-url="NOTION_URL" target="_blank" rel="noopener noreferrer" aria-label="자연대 학생회 노션">
+            <img class="brand-logo" src="logo.png" alt="파람 로고">
+          </a>
+          <span class="brand-text">
+            <a class="brand-main" href="index.html">랩인턴 백서</a>
+            <a class="brand-sub" href="#" data-config-url="NOTION_URL" target="_blank" rel="noopener noreferrer">제43대 자연대 학생회 [파람]</a>
+          </span>
+        </div>
+        <div class="menu">
+          <a href="index.html">홈</a>
+          <a href="labs.html" aria-current="page">연구실 찾기</a>
+          <a href="interviews.html">인터뷰</a>
+          <a href="contact-mail.html">컨택메일</a>
+          <a class="menu-report" href="#" data-config-url="ERROR_FORM_URL" target="_blank" rel="noopener noreferrer">오류 제보</a>
+        </div>
+      </nav>
+    </header>
+    <main class="page">
+      <p class="breadcrumb"><a href="index.html">홈</a> / 연구실 찾기</p>
+      <section class="hero">
+        <p class="eyebrow">연구실 찾기</p>
+        <h1>관심 분야와 가까운 연구실을 찾아봅니다.</h1>
+        <p class="lead">학부, 분야, 키워드로 연구실 정보를 골라볼 수 있습니다. 실제 모집 여부와 활동 방식은 각 연구실 안내를 참고해주세요!</p>
+      </section>
+      <section class="section toolbar">
+        <div class="toolbar-grid">
+          <div class="field">
+            <label for="searchInput">검색</label>
+            <input id="searchInput" type="search" placeholder="교수명, 연구실명, 키워드">
+          </div>
+          <div class="field">
+            <label for="deptFilter">소속 학부</label>
+            <select id="deptFilter">
+              <option value="all">전체</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="subfieldFilter">세부 분야</label>
+            <select id="subfieldFilter">
+              <option value="all">전체</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <section class="summary-row">
+        <div id="resultCount">데이터를 불러오는 중입니다.</div>
+        <button class="btn" type="button" id="resetButton">필터 초기화</button>
+      </section>
+      <section class="state" id="loadingState">연구실 정보를 불러오는 중입니다.</section>
+      <section class="state error hidden" id="errorState"></section>
+      <section class="cards" id="labGrid"></section>
+      <section class="state hidden" id="emptyState">조건에 맞는 결과가 없습니다. 검색어를 줄이거나 다른 학부를 선택해 주세요.</section>
+      <footer class="footer compact-credit-footer">
+        <p><strong>만든 사람들</strong> | 제43대 자연과학대학 학생회 [파람] 교육진로국</p>
+        <p><strong>함께한 사람들</strong> | 제12대 통계학과 학생회 [노을], 제26대 지구환경과학부 학생회 [이륙], 제19대 화학부 학생회, 제12대 수리과학부 학생회 [스펙트럼], 제22대 생명과학부 학생회 [여울], 제18대 물리천문학부 학생회 [델]</p>
+      </footer>
+    </main>
+    <script>
+      const DATA_REQUIRED_MESSAGE = "관리자 페이지에서 파일을 업로드해주세요.";
+      const DEPARTMENT_ORDER = ["수리과학부", "통계학과", "물리천문학부", "화학부", "생명과학부", "지구환경과학부"];
+      const SUBFIELDS_BY_DEPT = {
+        "수리과학부": ["대수학", "해석학", "기하학", "위상수학", "응용수학"],
+        "통계학과": ["통계이론", "데이터사이언스", "머신러닝", "생물통계", "금융통계"],
+        "물리천문학부": ["입자물리", "응집물질", "광학", "천문학", "우주론"],
+        "화학부": ["유기화학", "무기화학", "물리화학", "분석화학", "생화학"],
+        "생명과학부": ["분자생물학", "세포생물학", "신경생물학", "생태학", "유전학"],
+        "지구환경과학부": ["대기과학", "해양학", "지질학", "환경과학", "기후과학"]
+      };
+      let labs = [];
+      const $ = id => document.getElementById(id);
+
+      function safeText(v, f = "") {
+        const t = v == null ? "" : String(v).trim();
+        return t || f
+      }
+
+      function splitTags(v) {
+        return v ? String(v).split(/[,，#\/|]/).map(x => x.trim()).filter(Boolean) : []
+      }
+
+      function esc(v) {
+        return String(v).replace(/[&<>"']/g, c => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        } [c]))
+      }
+
+      function unique(items) {
+        return [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"))
+      }
+
+      function normalizeUrl(v) {
+        const u = safeText(v, "#");
+        return !u || u === "#" ? "#" : /^https?:\/\//.test(u) ? u : "https://" + u
+      }
+      
+      const POSITION_SUFFIX = /(석좌교수|명예교수|부교수|조교수|교수|강사|연구원|교원)$/;
+
+      function provisionalLabName(professor) {
+        const p = safeText(professor);
+        if (!p) return "";
+        return POSITION_SUFFIX.test(p) ? p + "님 연구실" : p + " 교수님 연구실";
+      }
+
+      function normalizeLab(r) {
+        const field = safeText(r["한줄설명"] || r["대표연구분야"], "미분류");
+        const kw = r["대표연구분야+세부키워드"] || r["세부키워드"] || "";
+        // 연구실명이 비어 있으면 교수명으로 가제를 만들고, 가제임을 표시해 둔다.
+        const givenName = safeText(r["연구실명"]);
+        const fallbackName = provisionalLabName(r["교수명"]);
+        return {
+          name: givenName || fallbackName || "연구실명 미입력",
+          provisional: !givenName && Boolean(fallbackName),
+          professor: safeText(r["교수명"]),
+          department: safeText(r["소속학부"], "미분류"),
+          field,
+          keywords: splitTags(kw),
+          description: safeText(r["상세요약"], "상세 요약이 아직 입력되지 않았습니다."),
+          homepage: normalizeUrl(r["연구실홈페이지"])
+        };
+      }
+
+      function searchable(l) {
+        return [l.name, l.professor, l.department, l.field, l.description, ...l.keywords].join(" ")
+          .toLowerCase()
+      }
+
+      function renderDepartmentOptions() {
+        const actual = unique(labs.map(l => l.department));
+        const list = [...DEPARTMENT_ORDER.filter(d => actual.includes(d)), ...actual.filter(d => !
+          DEPARTMENT_ORDER.includes(d))];
+        $("deptFilter").innerHTML = '<option value="all">전체</option>' + list.map(d => '<option value="' +
+          esc(d) + '">' + esc(d) + '</option>').join("")
+      }
+
+      function renderSubfieldOptions() {
+        const d = $("deptFilter").value;
+        const fields = d !== "all" && SUBFIELDS_BY_DEPT[d] ? SUBFIELDS_BY_DEPT[d] : unique(labs.map(l => l
+          .field));
+        $("subfieldFilter").innerHTML = '<option value="all">전체</option>' + fields.map(f =>
+          '<option value="' + esc(f) + '">' + esc(f) + '</option>').join("")
+      }
+
+      function renderLabs() {
+        const q = $("searchInput").value.trim().toLowerCase(),
+          d = $("deptFilter").value,
+          s = $("subfieldFilter").value;
+        const filtered = labs.filter(l => (!q || searchable(l).includes(q)) && (d === "all" || l
+  .department === d) && (s === "all" || l.field === s || l.keywords.includes(s)));
+        $("resultCount").textContent = "총 " + filtered.length + "개의 연구실";
+        $("emptyState").classList.toggle("hidden", filtered.length !== 0);
+        $("labGrid").innerHTML = filtered.map(l => {
+          const title = l.provisional ?
+            '<span class="provisional-name">' + esc(l.name) + '</span><span class="provisional-badge">가제</span>' :
+            esc(l.name);
+          const homepage = l.homepage !== "#" ?
+            '<a class="btn primary" href="' + esc(l.homepage) + '" target="_blank" rel="noopener noreferrer">홈페이지</a>' :
+            '<span class="btn">홈페이지 없음</span>';
+          const tags = '<span class="tag field-tag">' + esc(l.field) + '</span>' +
+            l.keywords.slice(0, 5).map(k => '<span class="tag">#' + esc(k) + '</span>').join("");
+          return '<article class="card">' +
+            '<h2 class="card-title">' + title + '</h2>' +
+            '<div class="meta">' + esc(l.professor) + ' · ' + esc(l.department) + '</div>' +
+            '<p>' + esc(l.description) + '</p>' +
+            '<div class="tags">' + tags + '</div>' +
+            '<div class="card-actions">' + homepage + '</div>' +
+            '</article>';
+        }).join("")
+      }
+
+      function showDataRequired() {
+        labs = [];
+        $("resultCount").textContent = "데이터가 아직 업로드되지 않았습니다.";
+        $("loadingState").classList.add("hidden");
+        $("errorState").textContent = DATA_REQUIRED_MESSAGE;
+        $("errorState").classList.remove("hidden");
+        renderDepartmentOptions();
+        renderSubfieldOptions();
+        renderLabs();
+      }
+
+      function loadData() {
+        const rows = window.SITE_DATA && Array.isArray(window.SITE_DATA.labs) ? window.SITE_DATA.labs :
+      [];
+        if (!rows.length) {
+          showDataRequired();
+          return
+        }
+        labs = rows.map(normalizeLab).filter(l => l.name !== "연구실명 미입력");
+        $("loadingState").classList.add("hidden");
+        if (!labs.length) {
+          showDataRequired();
+          return
+        }
+        $("errorState").classList.add("hidden");
+        renderDepartmentOptions();
+        renderSubfieldOptions();
+        renderLabs();
+      }
+      $("searchInput").addEventListener("input", renderLabs);
+      $("deptFilter").addEventListener("change", () => {
+        renderSubfieldOptions();
+        $("subfieldFilter").value = "all";
+        renderLabs()
+      });
+      $("subfieldFilter").addEventListener("change", renderLabs);
+      $("resetButton").addEventListener("click", () => {
+        $("searchInput").value = "";
+        $("deptFilter").value = "all";
+        renderSubfieldOptions();
+        $("subfieldFilter").value = "all";
+        renderLabs()
+      });
+      loadData();
+    </script>
+    <script>
+      document.querySelectorAll("[data-config-url]").forEach(function(link) {
+        var key = link.getAttribute("data-config-url");
+        var url = window.SITE_CONFIG && window.SITE_CONFIG[key];
+        if (url) {
+          link.href = url
+        } else {
+          link.hidden = true
+        }
+      });
+    </script>
+    <a class="admin-float" href="admin.html" aria-label="관리자 페이지">관리자</a>
+  </body>
+
+</html>

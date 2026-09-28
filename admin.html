@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지</title>
+    <link rel="stylesheet" href="sigape.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <script src="site-config.js"></script>
+    <script src="site-data.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav">
+        <div class="brand">
+          <a class="brand-logo-link" href="#" data-config-url="NOTION_URL" target="_blank" rel="noopener noreferrer" aria-label="자연대 학생회 노션">
+            <img class="brand-logo" src="logo.png" alt="파람 로고">
+          </a>
+          <span class="brand-text">
+            <a class="brand-main" href="index.html">랩인턴 백서</a>
+            <a class="brand-sub" href="#" data-config-url="NOTION_URL" target="_blank" rel="noopener noreferrer">제43대 자연대 학생회 [파람]</a>
+          </span>
+        </div>
+        <div class="menu">
+          <a href="index.html">홈</a>
+          <a href="labs.html">연구실 찾기</a>
+          <a href="interviews.html">인터뷰</a>
+          <a href="contact-mail.html">컨택메일</a>
+          <a class="menu-report" href="#" data-config-url="ERROR_FORM_URL" target="_blank" rel="noopener noreferrer">오류 제보</a>
+        </div>
+      </nav>
+    </header>
+    <main class="page admin-page">
+      <section class="admin-login panel" id="loginPanel">
+        <h2>관리자 로그인</h2>
+        <div class="field">
+          <label for="adminPassword">비밀번호</label>
+          <input id="adminPassword" type="password" autocomplete="current-password" placeholder="비밀번호 입력">
+        </div>
+        <button class="btn primary" type="button" id="loginButton">로그인</button>
+        <p class="small" id="loginMessage"></p>
+      </section>
+      <section class="admin-tools hidden" id="adminTools">
+        <p class="breadcrumb"><a href="index.html">홈</a> / 관리자</p>
+        <div class="grid two">
+          <article class="panel">
+            <h2>1. 파일 업로드</h2>
+            <div class="field">
+              <label for="labsFile">연구실 DB 엑셀 파일</label>
+              <input id="labsFile" type="file" accept=".xlsx,.xls,.csv,.tsv">
+            </div>
+            <div class="field">
+              <label for="interviewsFile">인터뷰 DB 엑셀 파일</label>
+              <input id="interviewsFile" type="file" accept=".xlsx,.xls,.csv,.tsv">
+            </div>
+            <p class="small">인터뷰 파일은 시트가 교수님, 대학원생, 학부생으로 나뉘어 있어도 됩니다. 구분 칸이 비어 있으면 시트 이름을 구분으로 사용합니다.</p>
+          </article>
+          <article class="panel soft">
+            <h2>2. 확인</h2>
+            <div class="admin-counts">
+              <p>연구실 DB: <strong id="labsCount">0</strong>개</p>
+              <p>인터뷰 DB: <strong id="interviewsCount">0</strong>개</p>
+            </div>
+            <button class="btn primary" type="button" id="downloadButton">site-data.js 다운로드</button>
+            <p class="small">다운로드한 site-data.js를 GitHub 저장소의 기존 site-data.js와 교체하면 전체 방문자에게 반영됩니다.</p>
+          </article>
+        </div>
+        <section class="panel admin-preview">
+          <h2>업로드 결과</h2>
+          <div id="adminStatus" class="small">아직 업로드된 파일이 없습니다.</div>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="previewTable">
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+      <footer class="footer admin-footer">
+        <a href="index.html">홈으로 돌아가기</a>
+      </footer>
+    </main>
+    <script>
+      document.querySelectorAll("[data-config-url]").forEach(function(link) {
+        var key = link.getAttribute("data-config-url");
+        var url = window.SITE_CONFIG && window.SITE_CONFIG[key];
+        if (url) {
+          link.href = url
+        } else {
+          link.hidden = true
+        }
+      });
+    </script>
+    <script>
+      const ADMIN_PASSWORD = "SnuCns123lg!";
+      const state = {
+        labs: [],
+        interviews: []
+      };
+      const $ = id => document.getElementById(id);
+
+      function normalizeKey(k) {
+        return String(k || "").trim();
+      }
+
+      function hasValue(row) {
+        return Object.values(row).some(v => String(v).trim());
+      }
+
+      function parseDelimited(text, delimiter) {
+        const rows = [];
+        let row = [],
+          cell = "",
+          quote = false;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i],
+            next = text[i + 1];
+          if (ch === '"' && quote && next === '"') {
+            cell += '"';
+            i++;
+            continue
+          }
+          if (ch === '"') {
+            quote = !quote;
+            continue
+          }
+          if (ch === delimiter && !quote) {
+            row.push(cell);
+            cell = "";
+            continue
+          }
+          if ((ch === '\n' || ch === '\r') && !quote) {
+            if (ch === '\r' && next === '\n') i++;
+            row.push(cell);
+            if (row.some(v => String(v).trim())) rows.push(row);
+            row = [];
+            cell = "";
+            continue
+          }
+          cell += ch;
+        }
+        row.push(cell);
+        if (row.some(v => String(v).trim())) rows.push(row);
+        const headers = (rows.shift() || []).map(normalizeKey);
+        return rows.map(values => Object.fromEntries(headers.map((h, i) => [h, values[i] || ""])));
+      }
+
+      function readTextFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(String(e.target.result || ""));
+          reader.onerror = () => reject(new Error("파일을 읽지 못했습니다."));
+          reader.readAsText(file, "utf-8");
+        });
+      }
+
+      function readWorkbook(file) {
+        return new Promise((resolve, reject) => {
+          if (!window.XLSX) {
+            reject(new Error("엑셀 분석 도구를 불러오지 못했습니다. CSV 또는 TSV 파일로 저장해서 다시 올려주세요."));
+            return
+          }
+          const reader = new FileReader();
+          reader.onload = e => {
+            try {
+              resolve(XLSX.read(e.target.result, {
+                type: "array"
+              }))
+            } catch (err) {
+              reject(new Error("엑셀 파일을 분석하지 못했습니다."))
+            }
+          };
+          reader.onerror = () => reject(new Error("파일을 읽지 못했습니다."));
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      function sheetRows(wb, name) {
+        const sheet = wb.Sheets[name];
+        return XLSX.utils.sheet_to_json(sheet, {
+          defval: ""
+        }).map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [normalizeKey(k), v])));
+      }
+
+      function normalizeRole(sheetName) {
+        const text = String(sheetName || "");
+        if (text.includes("교수")) return "교수님";
+        if (text.includes("대학원")) return "대학원생";
+        if (text.includes("학부")) return "학부생";
+        return text || "미분류";
+      }
+      async function rowsFromFile(file) {
+        const lower = file.name.toLowerCase();
+        if (lower.endsWith(".csv") || lower.endsWith(".tsv")) {
+          const text = await readTextFile(file);
+          return {
+            kind: "text",
+            rows: parseDelimited(text, lower.endsWith(".tsv") ? "\t" : ",")
+          };
+        }
+        const wb = await readWorkbook(file);
+        return {
+          kind: "workbook",
+          workbook: wb
+        };
+      }
+      async function handleLabs(file) {
+        const data = await rowsFromFile(file);
+        state.labs = (data.kind === "text" ? data.rows : sheetRows(data.workbook, data.workbook
+          .SheetNames[0])).filter(hasValue);
+        renderAdmin();
+      }
+      async function handleInterviews(file) {
+        const data = await rowsFromFile(file);
+        state.interviews = (data.kind === "text" ? data.rows : data.workbook.SheetNames.flatMap(name =>
+          sheetRows(data.workbook, name).map(row => {
+            if (!String(row["구분"] || "").trim()) row["구분"] = normalizeRole(name);
+            return row;
+          }))).filter(hasValue);
+        renderAdmin();
+      }
+
+      function renderAdmin() {
+        $("labsCount").textContent = state.labs.length;
+        $("interviewsCount").textContent = state.interviews.length;
+        $("adminStatus").textContent = "연구실 " + state.labs.length + "개, 인터뷰 " + state.interviews.length +
+          "개가 준비되었습니다.";
+        const rows = [...state.labs.slice(0, 3).map(r => ({
+          type: "연구실",
+          name: r["연구실명"] || r["교수명"] || ""
+        })), ...state.interviews.slice(0, 3).map(r => ({
+          type: "인터뷰",
+          name: r["이름"] || r["구분"] || ""
+        }))];
+        $("previewTable").innerHTML = "<tbody>" + rows.map(r => "<tr><th>" + r.type + "</th><td>" +
+          String(r.name || "") + "</td></tr>").join("") + "</tbody>";
+      }
+
+      function siteDataText() {
+        return "window.SITE_DATA = " + JSON.stringify({
+          generatedAt: new Date().toISOString(),
+          labs: state.labs,
+          interviews: state.interviews
+        }, null, 2) + ";\n";
+      }
+      $("loginButton").addEventListener("click", () => {
+        if ($("adminPassword").value === ADMIN_PASSWORD) {
+          $("loginPanel").classList.add("hidden");
+          $("adminTools").classList.remove("hidden");
+        } else {
+          $("loginMessage").textContent = "비밀번호를 확인해 주세요.";
+        }
+      });
+      $("labsFile").addEventListener("change", async e => {
+        try {
+          if (e.target.files[0]) await handleLabs(e.target.files[0])
+        } catch (err) {
+          $("adminStatus").textContent = err.message
+        }
+      });
+      $("interviewsFile").addEventListener("change", async e => {
+        try {
+          if (e.target.files[0]) await handleInterviews(e.target.files[0])
+        } catch (err) {
+          $("adminStatus").textContent = err.message
+        }
+      });
+      $("downloadButton").addEventListener("click", () => {
+        const blob = new Blob([siteDataText()], {
+          type: "text/javascript;charset=utf-8"
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "site-data.js";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+      renderAdmin();
+    </script>
+  </body>
+
+</html>
