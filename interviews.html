@@ -128,7 +128,7 @@
           dept: normalizeDept(r.학부),
           keywords: tags(r.키워드),
           summary: safe(r.요약, "요약이 아직 입력되지 않았습니다."),
-          overview: safe(r.소개 || r.개요, "인터뷰 소개가 아직 입력되지 않았습니다."),
+          overview: safe(r.소개 || r.개요 || r.요약, "인터뷰 소개가 아직 입력되지 않았습니다."),
           qa: Array.from({
             length: 10
           }, (_, i) => ({
