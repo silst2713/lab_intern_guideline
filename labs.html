@@ -59,7 +59,10 @@
       </section>
       <section class="summary-row">
         <div id="resultCount">데이터를 불러오는 중입니다.</div>
-        <button class="btn" type="button" id="resetButton">필터 초기화</button>
+        <div class="summary-actions">
+          <button class="btn" type="button" id="tagToggleAll" aria-expanded="false">세부분야 모두 보기</button>
+          <button class="btn" type="button" id="resetButton">필터 초기화</button>
+        </div>
       </section>
       <section class="state" id="loadingState">연구실 정보를 불러오는 중입니다.</section>
       <section class="state error hidden" id="errorState"></section>
@@ -72,16 +75,19 @@
     </main>
     <script>
       const DATA_REQUIRED_MESSAGE = "관리자 페이지에서 파일을 업로드해주세요.";
-      const DEPARTMENT_ORDER = ["수리과학부", "통계학과", "물리천문학부", "화학부", "생명과학부", "지구환경과학부"];
+      const DEPARTMENT_ORDER = ["수리과학부", "통계학과", "물리천문학부-물리학전공", "물리천문학부-천문학전공", "화학부", "생명과학부", "지구환경과학부", "자유전공학부"];
       const SUBFIELDS_BY_DEPT = {
         "수리과학부": ["대수학", "해석학", "기하학", "위상수학", "응용수학"],
         "통계학과": ["통계이론", "데이터사이언스", "머신러닝", "생물통계", "금융통계"],
-        "물리천문학부": ["입자물리", "응집물질", "광학", "천문학", "우주론"],
+        "물리천문학부-물리학전공": ["입자물리", "응집물질", "광학", "천문학", "우주론"],
+        "물리천문학부-천문학전공": ["천문1", "천문2", "천문3", "천문4", "천문5"],
         "화학부": ["유기화학", "무기화학", "물리화학", "분석화학", "생화학"],
         "생명과학부": ["분자생물학", "세포생물학", "신경생물학", "생태학", "유전학"],
-        "지구환경과학부": ["대기과학", "해양학", "지질학", "환경과학", "기후과학"]
+        "지구환경과학부": ["대기과학", "해양학", "지질학", "환경과학", "기후과학"],
+        "자유전공학부": ["자유전공학부"]
       };
       let labs = [];
+      let allTagsOpen = false;
       const $ = id => document.getElementById(id);
 
       function safeText(v, f = "") {
@@ -112,7 +118,13 @@
         return !u || u === "#" ? "#" : /^https?:\/\//.test(u) ? u : "https://" + u
       }
       
-      const POSITION_SUFFIX = /(석좌교수|명예교수|부교수|조교수|교수|강사|연구원|교원)$/;
+      const PROFESSOR_TITLE = /(석좌교수|부교수|조교수)/g;
+
+      function normalizeProfessor(v) {
+        return safeText(v).replace(PROFESSOR_TITLE, "교수");
+      }
+
+      const POSITION_SUFFIX = /(명예교수|교수|강사|연구원|교원)$/;
 
       function provisionalLabName(professor) {
         const p = safeText(professor);
@@ -123,13 +135,13 @@
       function normalizeLab(r) {
         const field = safeText(r["한줄설명"] || r["대표연구분야"], "미분류");
         const kw = r["대표연구분야+세부키워드"] || r["세부키워드"] || "";
-        // 연구실명이 비어 있으면 교수명으로 가제를 만들고, 가제임을 표시해 둔다.
         const givenName = safeText(r["연구실명"]);
-        const fallbackName = provisionalLabName(r["교수명"]);
+        const professor = normalizeProfessor(r["교수명"]);
+        const fallbackName = provisionalLabName(professor);
         return {
           name: givenName || fallbackName || "연구실명 미입력",
           provisional: !givenName && Boolean(fallbackName),
-          professor: safeText(r["교수명"]),
+          professor,
           department: safeText(r["소속학부"], "미분류"),
           field,
           keywords: splitTags(kw),
@@ -174,16 +186,41 @@
           const homepage = l.homepage !== "#" ?
             '<a class="btn primary" href="' + esc(l.homepage) + '" target="_blank" rel="noopener noreferrer">홈페이지</a>' :
             '<span class="btn">홈페이지 없음</span>';
-          const tags = '<span class="tag field-tag">' + esc(l.field) + '</span>' +
-            l.keywords.slice(0, 5).map(k => '<span class="tag">#' + esc(k) + '</span>').join("");
+          // 초록 대표분야는 항상, 파란 세부키워드는 버튼을 눌러야 보인다.
+          const subTags = l.keywords.map(k => '<span class="tag">#' + esc(k) + '</span>').join("");
+          const tags = '<div class="tags-block' + (allTagsOpen ? ' is-open' : '') + '">' +
+            '<div class="tags tags-main">' +
+            '<span class="tag field-tag">' + esc(l.field) + '</span>' +
+            (subTags ? '<button class="tag-toggle" type="button" aria-expanded="' + allTagsOpen + '">' +
+              (allTagsOpen ? '세부분야접기' : '세부분야보기') + '</button>' : '') +
+            '</div>' +
+            (subTags ? '<div class="tags tags-sub">' + subTags + '</div>' : '') +
+            '</div>';
           return '<article class="card">' +
             '<h2 class="card-title">' + title + '</h2>' +
             '<div class="meta">' + esc(l.professor) + ' · ' + esc(l.department) + '</div>' +
-            '<p>' + esc(l.description) + '</p>' +
-            '<div class="tags">' + tags + '</div>' +
+            '<div class="lab-desc">' +
+            '<div class="lab-desc-body">' +
+            '<p class="lab-desc-text">' + esc(l.description) + '</p>' +
+            '<span class="lab-desc-fade" aria-hidden="true"></span>' +
+            '</div>' +
+            '<button class="lab-desc-toggle" type="button" aria-expanded="false">더보기</button>' +
+            '</div>' +
+            tags +
             '<div class="card-actions">' + homepage + '</div>' +
             '</article>';
-        }).join("")
+        }).join("");
+        updateDescClamp()
+      }
+      // 설명이 실제로 5줄을 넘는 카드에만 더보기 버튼과 그라데이션을 넣음 (브라우저에서 높이를 직접 잰 후 판단함)
+      function updateDescClamp() {
+        requestAnimationFrame(() => {
+          document.querySelectorAll("#labGrid .lab-desc").forEach(box => {
+            const text = box.querySelector(".lab-desc-text");
+            const clamped = text.scrollHeight > text.clientHeight + 1;
+            box.classList.toggle("is-clamped", clamped || box.classList.contains("is-open"))
+          })
+        })
       }
 
       function showDataRequired() {
@@ -222,6 +259,48 @@
         renderLabs()
       });
       $("subfieldFilter").addEventListener("change", renderLabs);
+      // 카드는 매번 새로 그려지므로, 버튼마다 달지 않고 목록 전체에 한 번만 건다.
+      $("labGrid").addEventListener("click", e => {
+        const descBtn = e.target.closest(".lab-desc-toggle");
+        if (descBtn) {
+          const box = descBtn.closest(".lab-desc");
+          const open = box.classList.toggle("is-open");
+          descBtn.textContent = open ? "접기" : "더보기";
+          descBtn.setAttribute("aria-expanded", open ? "true" : "false");
+          return
+        }
+        const tagBtn = e.target.closest(".tag-toggle");
+        if (tagBtn) {
+          const block = tagBtn.closest(".tags-block");
+          const open = block.classList.toggle("is-open");
+          tagBtn.textContent = open ? "세부분야접기" : "세부분야보기";
+          tagBtn.setAttribute("aria-expanded", open ? "true" : "false")
+        }
+      });
+      // 창 폭이 바뀌면 줄 수가 달라지므로 다시 잰다.
+      let descResizeTimer;
+      window.addEventListener("resize", () => {
+        clearTimeout(descResizeTimer);
+        descResizeTimer = setTimeout(updateDescClamp, 150)
+      });
+      window.addEventListener("load", updateDescClamp);
+      function applyAllTags() {
+        const label = allTagsOpen ? "세부분야 모두 접기" : "세부분야 모두 보기";
+        $("tagToggleAll").textContent = label;
+        $("tagToggleAll").setAttribute("aria-expanded", allTagsOpen ? "true" : "false");
+        document.querySelectorAll("#labGrid .tags-block").forEach(block => {
+          block.classList.toggle("is-open", allTagsOpen);
+          const btn = block.querySelector(".tag-toggle");
+          if (btn) {
+            btn.textContent = allTagsOpen ? "세부분야접기" : "세부분야보기";
+            btn.setAttribute("aria-expanded", allTagsOpen ? "true" : "false")
+          }
+        })
+      }
+      $("tagToggleAll").addEventListener("click", () => {
+        allTagsOpen = !allTagsOpen;
+        applyAllTags()
+      });
       $("resetButton").addEventListener("click", () => {
         $("searchInput").value = "";
         $("deptFilter").value = "all";
