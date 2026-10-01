@@ -490,6 +490,125 @@ textarea:focus {
   padding-top: 12px
 }
 
+.tags-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 12px;
+  margin-bottom: 12px
+}
+
+.tags-block .tags {
+  margin: 0
+}
+
+.tags-main {
+  flex-wrap: nowrap;
+  align-items: flex-start
+}
+
+.tags-main .field-tag {
+  min-width: 0
+}
+
+.tag-toggle {
+  flex: none;
+  margin-left: auto;
+  padding: 3px 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  cursor: pointer
+}
+
+.tag-toggle:hover {
+  text-decoration: underline
+}
+
+.summary-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap
+}
+
+.tags-sub {
+  display: none
+}
+
+.tags-block.is-open .tags-sub {
+  display: flex
+}
+
+.lab-desc {
+  margin: 0 0 12px
+}
+
+.lab-desc-body {
+  position: relative
+}
+
+.lab-desc-text {
+  margin: 0;
+  line-height: 1.72;
+  /* 짧은 설명도 공백을 두어 줄 길이를 맞추는 기능 */
+  min-height: calc(1.72em * 5);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  overflow: hidden
+}
+
+.lab-desc.is-open .lab-desc-text {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible
+}
+
+.lab-desc-fade {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.6em;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .72) 55%, rgba(255, 255, 255, .95) 100%)
+}
+
+.lab-desc.is-clamped:not(.is-open) .lab-desc-fade {
+  display: block
+}
+
+.lab-desc-toggle {
+  visibility: hidden;
+  display: block;
+  margin: 4px 0 0 auto;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+  cursor: pointer
+}
+
+.lab-desc.is-clamped .lab-desc-toggle {
+  visibility: visible
+}
+
+.lab-desc-toggle:hover {
+  text-decoration: underline
+}
+
 .tag {
   display: inline-flex;
   padding: 3px 7px;
@@ -501,7 +620,7 @@ textarea:focus {
 }
 
 .card-actions {
-  margin-top: 0;
+  margin-top: auto;
   display: flex;
   gap: 8px
 }
@@ -654,6 +773,10 @@ details p {
 
   .summary-row {
     display: block
+  }
+
+  .summary-actions {
+    margin-top: 8px
   }
 }
 
