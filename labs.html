@@ -252,7 +252,7 @@
             '<p class="lab-desc-text">' + esc(l.description) + '</p>' +
             '<span class="lab-desc-fade" aria-hidden="true"></span>' +
             '</div>' +
-            '<button class="lab-desc-toggle" type="button" aria-expanded="false">더보기</button>' +
+            '<button class="lab-desc-toggle" type="button" aria-expanded="false">펼치기</button>' +
             '</div>' +
             tags +
             '<div class="card-actions">' + homepage + '</div>' +
@@ -260,7 +260,7 @@
         }).join("");
         updateDescClamp()
       }
-      // 설명이 실제로 5줄을 넘는 카드에만 더보기 버튼과 그라데이션을 넣음 (브라우저에서 높이를 직접 잰 후 판단함)
+      // 설명이 실제로 5줄을 넘는 카드에만 펼치기 버튼과 그라데이션을 넣음 (브라우저에서 높이를 직접 잰 후 판단함)
       function updateDescClamp() {
         requestAnimationFrame(() => {
           document.querySelectorAll("#labGrid .lab-desc").forEach(box => {
@@ -313,7 +313,7 @@
         if (descBtn) {
           const box = descBtn.closest(".lab-desc");
           const open = box.classList.toggle("is-open");
-          descBtn.textContent = open ? "접기" : "더보기";
+          descBtn.textContent = open ? "접기" : "펼치기";
           descBtn.setAttribute("aria-expanded", open ? "true" : "false");
           return
         }
