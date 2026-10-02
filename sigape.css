@@ -490,10 +490,13 @@ textarea:focus {
   padding-top: 12px
 }
 
+/* ── 태그: 초록 대표분야 한 줄 + 접히는 파란 세부키워드 ────────── */
+
 .tags-block {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  /* 설명 바로 아래에 고정. 파란 태그가 늘어나면 아래로 밀린다. */
   padding-top: 12px;
   margin-bottom: 12px
 }
@@ -507,6 +510,7 @@ textarea:focus {
   align-items: flex-start
 }
 
+/* 대표분야가 길면 버튼을 밀어내지 말고 태그 안에서 줄바꿈하게 한다 */
 .tags-main .field-tag {
   min-width: 0
 }
@@ -530,10 +534,63 @@ textarea:focus {
   text-decoration: underline
 }
 
+/* 요약 줄 오른쪽의 버튼 묶음 */
 .summary-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap
+  flex-wrap: wrap;
+  align-items: center
+}
+
+/* ── 실험유형 선택 버튼 (전체 / 웻랩 / 드라이랩 / 하이브리드랩) ── */
+
+.type-filter {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--line2);
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden
+}
+
+.type-btn {
+  padding: 8px 11px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: #30415f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 680;
+  white-space: nowrap;
+  cursor: pointer
+}
+
+.type-btn:first-child {
+  border-left: 0
+}
+
+.type-btn:hover {
+  background: var(--blue-soft)
+}
+
+/* 선택된 것만 파란색 */
+.type-btn.is-active {
+  background: var(--blue);
+  border-left-color: var(--blue);
+  color: #fff
+}
+
+.type-btn.is-active:hover {
+  background: var(--blue-dark)
+}
+
+/* 실험유형 노란 태그 (세부분야를 펼쳤을 때 맨 끝) */
+.tag.type-tag {
+  background: #fff5d6;
+  border-color: #e8ce84;
+  color: #7a5a06;
+  font-weight: 760
 }
 
 .tags-sub {
@@ -543,6 +600,8 @@ textarea:focus {
 .tags-block.is-open .tags-sub {
   display: flex
 }
+
+/* ── 연구실 설명: 기본 5줄, 넘치면 더보기 ───────────────────── */
 
 .lab-desc {
   margin: 0 0 12px
@@ -555,7 +614,7 @@ textarea:focus {
 .lab-desc-text {
   margin: 0;
   line-height: 1.72;
-  /* 짧은 설명도 공백을 두어 줄 길이를 맞추는 기능 */
+  /* 짧은 설명도 5줄 높이를 차지해 카드끼리 폭이 맞는다 */
   min-height: calc(1.72em * 5);
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -571,6 +630,7 @@ textarea:focus {
   overflow: visible
 }
 
+/* 접힌 상태에서 마지막 줄을 흐리게 덮는 그라데이션 */
 .lab-desc-fade {
   display: none;
   position: absolute;
@@ -587,6 +647,7 @@ textarea:focus {
 }
 
 .lab-desc-toggle {
+  /* 버튼이 없는 카드도 같은 높이를 차지해, 아래 태그 위치가 흔들리지 않게 한다 */
   visibility: hidden;
   display: block;
   margin: 4px 0 0 auto;
@@ -620,6 +681,7 @@ textarea:focus {
 }
 
 .card-actions {
+  /* 태그가 얼마나 늘어나든 홈페이지 버튼은 카드 맨 아래 */
   margin-top: auto;
   display: flex;
   gap: 8px
