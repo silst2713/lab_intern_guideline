@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>(베타) 인터뷰 모아보기</title>
+    <title>(베타) 자연대 연구실 찾기</title>
     <link rel="stylesheet" href="sigape.css">
     <link rel="icon" type="image/png" href="logo.png">
     <script src="site-config.js"></script>
@@ -23,78 +23,86 @@
         </div>
         <div class="menu">
           <a href="index.html">홈</a>
-          <a href="labs.html">연구실 찾기</a>
-          <a href="interviews.html" aria-current="page">인터뷰</a>
+          <a href="labs.html" aria-current="page">연구실 찾기</a>
+          <a href="interviews.html">인터뷰</a>
           <a href="contact-mail.html">컨택메일</a>
           <a class="menu-report" href="#" data-config-url="ERROR_FORM_URL" target="_blank" rel="noopener noreferrer">오류 제보</a>
         </div>
       </nav>
     </header>
     <main class="page">
-      <p class="breadcrumb"><a href="index.html">홈</a> / 인터뷰 모아보기</p>
+      <p class="breadcrumb"><a href="index.html">홈</a> / 연구실 찾기</p>
       <section class="hero">
-        <p class="eyebrow">인터뷰 데이터베이스</p>
-        <h1>랩인턴을 먼저 경험한 사람들의 이야기를 모았습니다.</h1>
-        <p class="lead">학부생, 대학원생, 교수님 인터뷰를 구분과 학부별로 살펴볼 수 있습니다. </p>
+        <p class="eyebrow">연구실 찾기</p>
+        <h1>관심 분야와 가까운 연구실을 찾아봅니다.</h1>
+        <p class="lead">학부, 분야, 키워드로 연구실 정보를 골라볼 수 있습니다. 실제 모집 여부와 활동 방식은 각 연구실 안내를 참고해주세요!</p>
       </section>
       <section class="section toolbar">
         <div class="toolbar-grid">
           <div class="field">
             <label for="searchInput">검색</label>
-            <input id="searchInput" type="search" placeholder="이름, 학부, 키워드, 요약">
+            <input id="searchInput" type="search" placeholder="교수명, 연구실명, 키워드">
           </div>
           <div class="field">
-            <label for="roleFilter">구분</label>
-            <select id="roleFilter">
+            <label for="deptFilter">소속 학부</label>
+            <select id="deptFilter">
               <option value="all">전체</option>
             </select>
           </div>
           <div class="field">
-            <label for="deptFilter">학부</label>
-            <select id="deptFilter">
+            <label for="subfieldFilter">세부 분야</label>
+            <select id="subfieldFilter">
               <option value="all">전체</option>
             </select>
           </div>
         </div>
       </section>
       <section class="summary-row">
-        <div id="resultCount">인터뷰를 불러오는 중입니다.</div>
-        <button class="btn" type="button" id="resetButton">필터 초기화</button>
+        <div id="resultCount">데이터를 불러오는 중입니다.</div>
+        <div class="summary-actions">
+          <div class="type-filter" id="typeFilter" role="group" aria-label="실험유형">
+            <button class="type-btn is-active" type="button" data-type="all" aria-pressed="true">전체</button>
+            <button class="type-btn" type="button" data-type="웻랩" aria-pressed="false">웻랩</button>
+            <button class="type-btn" type="button" data-type="드라이랩" aria-pressed="false">드라이랩</button>
+            <button class="type-btn" type="button" data-type="하이브리드랩" aria-pressed="false">하이브리드랩</button>
+          </div>
+          <button class="btn" type="button" id="tagToggleAll" aria-expanded="false">세부분야 모두 보기</button>
+          <button class="btn" type="button" id="resetButton">필터 초기화</button>
+        </div>
       </section>
-      <section class="state" id="loadingState">인터뷰 정보를 불러오는 중입니다.</section>
+      <section class="state" id="loadingState">연구실 정보를 불러오는 중입니다.</section>
       <section class="state error hidden" id="errorState"></section>
-      <section class="cards" id="gallery"></section>
+      <section class="cards" id="labGrid"></section>
       <section class="state hidden" id="emptyState">조건에 맞는 결과가 없습니다. 검색어를 줄이거나 다른 학부를 선택해 주세요.</section>
       <footer class="footer compact-credit-footer">
         <p><strong>만든 사람들</strong> | 제43대 자연과학대학 학생회 [파람] 교육진로국</p>
         <p><strong>함께한 사람들</strong> | 제12대 통계학과 학생회 [노을], 제26대 지구환경과학부 학생회 [이륙], 제19대 화학부 학생회, 제12대 수리과학부 학생회 [스펙트럼], 제22대 생명과학부 학생회 [여울], 제18대 물리천문학부 학생회 [델]</p>
       </footer>
-      <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
-        <article class="modal">
-          <div class="modal-head">
-            <div>
-              <h2 id="modalName">인터뷰</h2>
-              <div class="small" id="modalMeta"></div>
-            </div>
-            <button class="close-btn" type="button" id="closeModal" aria-label="닫기">×</button>
-          </div>
-          <div class="modal-body" id="modalBody"></div>
-        </article>
-      </div>
     </main>
     <script>
       const DATA_REQUIRED_MESSAGE = "관리자 페이지에서 파일을 업로드해주세요.";
-      let interviews = [],
-        currentRole = "all",
-        currentDept = "all";
-      const defaultQuestions = ["랩인턴을 하게 된 계기는 무엇인가요?", "컨택 또는 선발 과정에서 중요했던 점은 무엇인가요?", "실제로 어떤 일을 했나요?",
-        "미리 준비하면 좋은 것은 무엇인가요?", "랩인턴을 고민하는 학부생에게 해주고 싶은 조언은 무엇인가요?"
-      ];
+      const DEPARTMENT_ORDER = ["수리과학부", "통계학과", "물리천문학부-물리학전공", "물리천문학부-천문학전공", "화학부", "생명과학부", "지구환경과학부", "자유전공학부"];
+      let labs = [];
+      // 겸직 교수님: 소속학부 칸은 그대로 두고 아래 학부 탭에도 함께 보이게 한다.
+      // 값은 그 학부에서 쓸 세부분야. 빈 문자열이면 DB의 세부분야를 그대로 쓴다.
+      // 키는 교수 성함(공백 앞부분) 또는 연구실명. 동명이인은 연구실명으로 지정할 것.
+      const EXTRA_DEPARTMENTS = {
+        "신예은": { "자유전공학부": "" },
+        "노유선": { "자유전공학부": "" },
+        "김성연": { "생명과학부": "신경생물학" }
+      };
+      let allTagsOpen = false;
+      // 실험유형 필터: "all" | "웻랩" | "드라이랩" | "하이브리드랩"
+      let currentType = "all";
       const $ = id => document.getElementById(id);
 
-      function safe(v, f = "") {
+      function safeText(v, f = "") {
         const t = v == null ? "" : String(v).trim();
         return t || f
+      }
+
+      function splitTags(v) {
+        return v ? String(v).split(/[,，#\/|]/).map(x => x.trim()).filter(Boolean) : []
       }
 
       function esc(v) {
@@ -107,147 +115,263 @@
         } [c]))
       }
 
-      function tags(v) {
-        return v ? String(v).split(/[,，#\/|]/).map(x => x.trim()).filter(Boolean) : []
-      }
-
       function unique(items) {
         return [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"))
       }
 
-      function normalizeDept(value) {
-        const text = safe(value, "미분류");
-        const order = ["수리과학부", "통계학과", "물리천문학부", "화학부", "생명과학부", "지구환경과학부"];
-        return order.find(dept => text.includes(dept)) || text
+      function normalizeUrl(v) {
+        const u = safeText(v, "#");
+        return !u || u === "#" ? "#" : /^https?:\/\//.test(u) ? u : "https://" + u
+      }
+      
+      const PROFESSOR_TITLE = /(석좌교수|부교수|조교수)/g;
+
+      function normalizeProfessor(v) {
+        return safeText(v).replace(PROFESSOR_TITLE, "교수");
       }
 
-      function normalize(r) {
+      const POSITION_SUFFIX = /(명예교수|교수|강사|연구원|교원)$/;
+
+      function provisionalLabName(professor) {
+        const p = safeText(professor);
+        if (!p) return "";
+        return POSITION_SUFFIX.test(p) ? p + "님 연구실" : p + " 교수님 연구실";
+      }
+
+      function normalizeLab(r) {
+        const field = safeText(r["한줄설명"] || r["대표연구분야"], "미분류");
+        const kw = r["대표연구분야+세부키워드"] || r["세부키워드"] || "";
+        const givenName = safeText(r["연구실명"]);
+        const professor = normalizeProfessor(r["교수명"]);
+        const fallbackName = provisionalLabName(professor);
+        const department = safeText(r["소속학부"], "미분류");
+        // DB의 '세부분야' 칸으로 분류한다. 화면에는 표시하지 않는 숨은 값.
+        const subfield = safeText(r["세부분야"]);
+        // DB의 '실험유형' 칸. 노란 태그로 보여주고 상단 버튼으로 거른다.
+        const labType = safeText(r["실험유형"]);
+        // deptSubfields: 학부마다 어떤 세부분야로 걸릴지. 겸직이면 학부별로 다를 수 있다.
+        const deptSubfields = {};
+        if (subfield) deptSubfields[department] = subfield;
+        const extra = EXTRA_DEPARTMENTS[givenName] || EXTRA_DEPARTMENTS[professor.split(" ")[0]] || {};
+        Object.keys(extra).forEach(d => {
+          const v = safeText(extra[d]) || subfield;
+          if (v) deptSubfields[d] = v;
+        });
         return {
-          name: safe(r.이름, "이름 미입력"),
-          role: safe(r.구분, "미분류"),
-          dept: normalizeDept(r.학부),
-          keywords: tags(r.키워드),
-          summary: safe(r.요약, "요약이 아직 입력되지 않았습니다."),
-          overview: safe(r.소개 || r.개요 || r.요약, "인터뷰 소개가 아직 입력되지 않았습니다."),
-          qa: Array.from({
-            length: 10
-          }, (_, i) => ({
-            q: safe(r["질문" + (i + 1)], ""),
-            a: safe(r["답변" + (i + 1)], "")
-          })).filter(x => x.q || x.a),
-          advice: safe(r.한마디 || r.한줄조언, "인터뷰 조언을 입력해주세요.")
-        }
+          name: givenName || fallbackName || "연구실명 미입력",
+          provisional: !givenName && Boolean(fallbackName),
+          professor,
+          department,
+          departments: [...new Set([department, ...Object.keys(extra)])],
+          subfield,
+          deptSubfields,
+          labType,
+          field,
+          keywords: splitTags(kw),
+          description: safeText(r["상세요약"], "상세 요약이 아직 입력되지 않았습니다."),
+          homepage: normalizeUrl(r["연구실홈페이지"])
+        };
       }
 
-      function renderOptions() {
-        const roles = unique(interviews.map(i => i.role));
-        const depts = unique(interviews.map(i => i.dept));
-        $("roleFilter").innerHTML = '<option value="all">전체</option>' + roles.map(r => '<option value="' +
-          esc(r) + '">' + esc(r) + '</option>').join("");
-        $("deptFilter").innerHTML = '<option value="all">전체</option>' + depts.map(d => '<option value="' +
+      function searchable(l) {
+        return [l.name, l.professor, ...l.departments, l.field, l.labType, l.description, ...l.keywords]
+          .join(" ")
+          .toLowerCase()
+      }
+
+      function renderDepartmentOptions() {
+        const actual = unique(labs.flatMap(l => l.departments));
+        const list = [...DEPARTMENT_ORDER.filter(d => actual.includes(d)), ...actual.filter(d => !
+          DEPARTMENT_ORDER.includes(d))];
+        $("deptFilter").innerHTML = '<option value="all">전체</option>' + list.map(d => '<option value="' +
           esc(d) + '">' + esc(d) + '</option>').join("")
       }
 
-      function filteredInterviews() {
-        const q = $("searchInput").value.trim().toLowerCase();
-        return interviews.filter(i => {
-          const hay = [i.name, i.role, i.dept, i.summary, i.overview, i.advice, ...i.keywords, ...i.qa
-            .flatMap(x => [x.q, x.a])
-          ].join(" ").toLowerCase();
-          return (!q || hay.includes(q)) && (currentRole === "all" || i.role === currentRole) && (
-            currentDept === "all" || i.dept === currentDept)
+      function optionsHtml(fields) {
+        return fields.map(f => '<option value="' + esc(f) + '">' + esc(f) + '</option>').join("")
+      }
+
+      // 선택한 학부에 실제로 존재하는 세부분야만 목록에 올린다.
+      // 데이터에서 직접 뽑으므로 새 분야가 생겨도 코드를 고칠 필요가 없다.
+      // 학부를 고르지 않은 상태에서는 어느 학부의 분야인지 알 수 없으므로,
+      // <optgroup>으로 학부별로 묶어서 보여준다.
+      function renderSubfieldOptions() {
+        const d = $("deptFilter").value;
+        if (d !== "all") {
+          $("subfieldFilter").innerHTML = '<option value="all">전체</option>' +
+            optionsHtml(unique(labs.map(l => l.deptSubfields[d])));
+          return
+        }
+        const actual = unique(labs.map(l => l.department));
+        const order = [...DEPARTMENT_ORDER.filter(x => actual.includes(x)),
+          ...actual.filter(x => !DEPARTMENT_ORDER.includes(x))
+        ];
+        // 묶음은 주 소속학부를 기준으로 만든다. 겸직 때문에 같은 분야가 두 번 뜨지 않게 하기 위함.
+        const groups = order.map(dept => {
+          const fields = unique(labs.filter(l => l.department === dept).map(l => l.subfield));
+          return fields.length ?
+            '<optgroup label="' + esc(dept) + '">' + optionsHtml(fields) + '</optgroup>' : ""
+        }).join("");
+        $("subfieldFilter").innerHTML = '<option value="all">전체</option>' + groups
+      }
+
+      function renderLabs() {
+        const q = $("searchInput").value.trim().toLowerCase(),
+          d = $("deptFilter").value,
+          s = $("subfieldFilter").value;
+        const filtered = labs.filter(l => (!q || searchable(l).includes(q)) &&
+          (currentType === "all" || l.labType === currentType) &&
+          (d === "all" || l.departments.includes(d)) &&
+          (s === "all" || (d === "all" ?
+            Object.values(l.deptSubfields).includes(s) : l.deptSubfields[d] === s)));
+        $("resultCount").textContent = "총 " + filtered.length + "개의 연구실";
+        $("emptyState").classList.toggle("hidden", filtered.length !== 0);
+        $("labGrid").innerHTML = filtered.map(l => {
+          const title = l.provisional ?
+            '<span class="provisional-name">' + esc(l.name) + '</span><span class="provisional-badge">가제</span>' :
+            esc(l.name);
+          const homepage = l.homepage !== "#" ?
+            '<a class="btn primary" href="' + esc(l.homepage) + '" target="_blank" rel="noopener noreferrer">홈페이지</a>' :
+            '<span class="btn">홈페이지 없음</span>';
+          // 초록 대표분야는 항상, 파란 세부키워드는 버튼을 눌러야 보인다.
+          const subTags = l.keywords.map(k => '<span class="tag">#' + esc(k) + '</span>').join("") +
+            (l.labType ? '<span class="tag type-tag">' + esc(l.labType) + '</span>' : '');
+          const tags = '<div class="tags-block' + (allTagsOpen ? ' is-open' : '') + '">' +
+            '<div class="tags tags-main">' +
+            '<span class="tag field-tag">' + esc(l.field) + '</span>' +
+            (subTags ? '<button class="tag-toggle" type="button" aria-expanded="' + allTagsOpen + '">' +
+              (allTagsOpen ? '세부분야접기' : '세부분야보기') + '</button>' : '') +
+            '</div>' +
+            (subTags ? '<div class="tags tags-sub">' + subTags + '</div>' : '') +
+            '</div>';
+          return '<article class="card">' +
+            '<h2 class="card-title">' + title + '</h2>' +
+            '<div class="meta">' + esc(l.professor) + ' · ' + esc(l.department) + '</div>' +
+            '<div class="lab-desc">' +
+            '<div class="lab-desc-body">' +
+            '<p class="lab-desc-text">' + esc(l.description) + '</p>' +
+            '<span class="lab-desc-fade" aria-hidden="true"></span>' +
+            '</div>' +
+            '<button class="lab-desc-toggle" type="button" aria-expanded="false">더보기</button>' +
+            '</div>' +
+            tags +
+            '<div class="card-actions">' + homepage + '</div>' +
+            '</article>';
+        }).join("");
+        updateDescClamp()
+      }
+      // 설명이 실제로 5줄을 넘는 카드에만 더보기 버튼과 그라데이션을 넣음 (브라우저에서 높이를 직접 잰 후 판단함)
+      function updateDescClamp() {
+        requestAnimationFrame(() => {
+          document.querySelectorAll("#labGrid .lab-desc").forEach(box => {
+            const text = box.querySelector(".lab-desc-text");
+            const clamped = text.scrollHeight > text.clientHeight + 1;
+            box.classList.toggle("is-clamped", clamped || box.classList.contains("is-open"))
+          })
         })
       }
 
-      function render() {
-        const list = filteredInterviews();
-        $("resultCount").textContent = "총 " + list.length + "개의 인터뷰";
-        $("emptyState").classList.toggle("hidden", list.length !== 0);
-        $("gallery").innerHTML = list.map((item, index) => {
-          const tagHtml = item.keywords.slice(0, 4).map(k => '<span class="tag">#' + esc(k) +
-            '</span>').join("");
-          return '<article class="card interview-card"><p class="eyebrow">' + esc(item.role) +
-            '</p><h2 class="card-title">' + esc(item.name) + '</h2><div class="meta">' + esc(item
-              .dept) + '</div><p>' + esc(item.summary) + '</p><div class="tags">' + tagHtml +
-            '</div><div class="card-actions"><button class="btn primary" type="button" data-interview-index="' +
-            index + '">자세히 보기</button></div></article>'
-        }).join("");
-        document.querySelectorAll("[data-interview-index]").forEach(btn => btn.addEventListener("click",
-        () => openModal(list[Number(btn.dataset.interviewIndex)])))
-      }
-
-      function openModal(item) {
-        if (!item) return;
-        $("modalName").textContent = item.name;
-        $("modalMeta").textContent = item.role + " · " + item.dept;
-        const qa = item.qa.length ? item.qa : [];
-        const tagHtml = item.keywords.length ? '<div class="tags">' + item.keywords.map(k =>
-          '<span class="tag">#' + esc(k) + '</span>').join("") + '</div>' : "";
-        const qaHtml = qa.map((x, i) => '<details ' + (i === 0 ? 'open' : '') + '><summary>Q. ' + esc(x
-            .q || defaultQuestions[i] || "질문") + '</summary><p>' + esc(x.a || "답변이 아직 입력되지 않았습니다.") +
-          '</p></details>').join("");
-        $("modalBody").innerHTML = '<section class="modal-summary"><p>' + esc(item.overview) + '</p>' +
-          tagHtml + '</section>' + qaHtml + '<section class="panel soft modal-advice"><h3>한줄 조언</h3><p>' +
-          esc(item.advice) + '</p></section>';
-        $("modalBackdrop").classList.add("active");
-        $("modalBackdrop").setAttribute("aria-hidden", "false")
-      }
-
-      function closeModal() {
-        $("modalBackdrop").classList.remove("active");
-        $("modalBackdrop").setAttribute("aria-hidden", "true")
-      }
-
       function showDataRequired() {
-        interviews = [];
+        labs = [];
         $("resultCount").textContent = "데이터가 아직 업로드되지 않았습니다.";
         $("loadingState").classList.add("hidden");
         $("errorState").textContent = DATA_REQUIRED_MESSAGE;
         $("errorState").classList.remove("hidden");
-        renderOptions();
-        render();
+        renderDepartmentOptions();
+        renderSubfieldOptions();
+        renderLabs();
       }
 
       function loadData() {
-        const rows = window.SITE_DATA && Array.isArray(window.SITE_DATA.interviews) ? window.SITE_DATA
-          .interviews : [];
+        const rows = window.SITE_DATA && Array.isArray(window.SITE_DATA.labs) ? window.SITE_DATA.labs :
+      [];
         if (!rows.length) {
           showDataRequired();
           return
         }
-        interviews = rows.map(normalize).filter(i => i.name !== "이름 미입력");
+        labs = rows.map(normalizeLab).filter(l => l.name !== "연구실명 미입력");
         $("loadingState").classList.add("hidden");
-        if (!interviews.length) {
+        if (!labs.length) {
           showDataRequired();
           return
         }
         $("errorState").classList.add("hidden");
-        renderOptions();
-        render()
+        renderDepartmentOptions();
+        renderSubfieldOptions();
+        renderLabs();
       }
-      $("searchInput").addEventListener("input", render);
-      $("roleFilter").addEventListener("change", e => {
-        currentRole = e.target.value;
-        render()
+      $("searchInput").addEventListener("input", renderLabs);
+      $("deptFilter").addEventListener("change", () => {
+        renderSubfieldOptions();
+        $("subfieldFilter").value = "all";
+        renderLabs()
       });
-      $("deptFilter").addEventListener("change", e => {
-        currentDept = e.target.value;
-        render()
+      $("subfieldFilter").addEventListener("change", renderLabs);
+      // 카드는 매번 새로 그려지므로, 버튼마다 달지 않고 목록 전체에 한 번만 건다.
+      $("labGrid").addEventListener("click", e => {
+        const descBtn = e.target.closest(".lab-desc-toggle");
+        if (descBtn) {
+          const box = descBtn.closest(".lab-desc");
+          const open = box.classList.toggle("is-open");
+          descBtn.textContent = open ? "접기" : "더보기";
+          descBtn.setAttribute("aria-expanded", open ? "true" : "false");
+          return
+        }
+        const tagBtn = e.target.closest(".tag-toggle");
+        if (tagBtn) {
+          const block = tagBtn.closest(".tags-block");
+          const open = block.classList.toggle("is-open");
+          tagBtn.textContent = open ? "세부분야접기" : "세부분야보기";
+          tagBtn.setAttribute("aria-expanded", open ? "true" : "false")
+        }
+      });
+      // 창 폭이 바뀌면 줄 수가 달라지므로 다시 잰다.
+      let descResizeTimer;
+      window.addEventListener("resize", () => {
+        clearTimeout(descResizeTimer);
+        descResizeTimer = setTimeout(updateDescClamp, 150)
+      });
+      window.addEventListener("load", updateDescClamp);
+      function applyAllTags() {
+        const label = allTagsOpen ? "세부분야 모두 접기" : "세부분야 모두 보기";
+        $("tagToggleAll").textContent = label;
+        $("tagToggleAll").setAttribute("aria-expanded", allTagsOpen ? "true" : "false");
+        document.querySelectorAll("#labGrid .tags-block").forEach(block => {
+          block.classList.toggle("is-open", allTagsOpen);
+          const btn = block.querySelector(".tag-toggle");
+          if (btn) {
+            btn.textContent = allTagsOpen ? "세부분야접기" : "세부분야보기";
+            btn.setAttribute("aria-expanded", allTagsOpen ? "true" : "false")
+          }
+        })
+      }
+      // 실험유형 버튼: 하나만 선택되며 선택된 것만 파란색으로 칠한다.
+      function applyTypeFilter() {
+        document.querySelectorAll("#typeFilter .type-btn").forEach(b => {
+          const on = b.dataset.type === currentType;
+          b.classList.toggle("is-active", on);
+          b.setAttribute("aria-pressed", on ? "true" : "false")
+        })
+      }
+      $("typeFilter").addEventListener("click", e => {
+        const btn = e.target.closest(".type-btn");
+        if (!btn || btn.dataset.type === currentType) return;
+        currentType = btn.dataset.type;
+        applyTypeFilter();
+        renderLabs()
+      });
+      $("tagToggleAll").addEventListener("click", () => {
+        allTagsOpen = !allTagsOpen;
+        applyAllTags()
       });
       $("resetButton").addEventListener("click", () => {
         $("searchInput").value = "";
-        currentRole = "all";
-        currentDept = "all";
-        $("roleFilter").value = "all";
+        currentType = "all";
+        applyTypeFilter();
         $("deptFilter").value = "all";
-        render()
-      });
-      $("closeModal").addEventListener("click", closeModal);
-      $("modalBackdrop").addEventListener("click", e => {
-        if (e.target.id === "modalBackdrop") closeModal()
-      });
-      document.addEventListener("keydown", e => {
-        if (e.key === "Escape") closeModal()
+        renderSubfieldOptions();
+        $("subfieldFilter").value = "all";
+        renderLabs()
       });
       loadData();
     </script>
