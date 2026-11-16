@@ -19,7 +19,17 @@
 }
 
 html {
-  scroll-behavior: smooth
+  scroll-behavior: smooth;
+  /* 검색·필터로 목록이 짧아져 세로 스크롤바가 사라져도
+     그 자리를 비워 둬서 화면이 좌우로 흔들리지 않게 한다. */
+  scrollbar-gutter: stable
+}
+
+/* scrollbar-gutter를 모르는 구형 브라우저용 대체 */
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll
+  }
 }
 
 body {
